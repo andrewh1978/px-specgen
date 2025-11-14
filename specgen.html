@@ -1620,6 +1620,15 @@ metadata:
                 // Check if vSphere is configured
                 const isVsphere = values.storageType === 'cloud' && values.cloudProvider === 'vsphere';
                 
+                // Check if Pure FlashArray is configured
+                const isPure = values.storageType === 'cloud' && values.cloudProvider === 'pure';
+                
+                // Check if Azure is configured
+                const isAzure = values.storageType === 'cloud' && values.cloudProvider === 'azure';
+                
+                // Check if GCP is configured
+                const isGCP = values.storageType === 'cloud' && values.cloudProvider === 'gcp';
+                
                 // Generate secrets YAML
                 let secretYaml = '';
                 
@@ -1634,6 +1643,70 @@ type: Opaque
 stringData:
   VSPHERE_USER: "<vcenter-username>"
   VSPHERE_PASSWORD: "<vcenter-password>"
+---
+`;
+                }
+                
+                // Pure FlashArray secret
+                if (isPure) {
+                    secretYaml += `apiVersion: v1
+kind: Secret
+metadata:
+  name: px-pure-secret
+  namespace: ${values.namespace}
+type: Opaque
+stringData:
+  pure.json: |
+    {
+      "FlashArrays": [
+        {
+          "MgmtEndPoint": "<management-endpoint>",
+          "APIToken": "<api-token>"
+        }
+      ]
+    }
+---
+`;
+                }
+                
+                // Azure secret
+                if (isAzure) {
+                    secretYaml += `apiVersion: v1
+kind: Secret
+metadata:
+  name: px-azure
+  namespace: ${values.namespace}
+type: Opaque
+stringData:
+  AZURE_TENANT_ID: "<tenant-id>"
+  AZURE_CLIENT_ID: "<client-id>"
+  AZURE_CLIENT_SECRET: "<client-secret>"
+---
+`;
+                }
+                
+                // GCP secret
+                if (isGCP) {
+                    secretYaml += `apiVersion: v1
+kind: Secret
+metadata:
+  name: px-gcloud
+  namespace: ${values.namespace}
+type: Opaque
+stringData:
+  gcloud.json: |
+    {
+      "type": "service_account",
+      "project_id": "<project-id>",
+      "private_key_id": "<private-key-id>",
+      "private_key": "<private-key>",
+      "client_email": "<client-email>",
+      "client_id": "<client-id>",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "<client-cert-url>"
+    }
 ---
 `;
                 }
