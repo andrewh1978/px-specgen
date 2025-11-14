@@ -223,7 +223,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Portworx StorageCluster Generator</h1>
+            <h1>Portworx StorageCluster Generator (alpha)</h1>
         </div>
         
         <div class="content-wrapper">
@@ -418,12 +418,12 @@
                         </div>
                     </div>
                     
-                    <div class="form-group" id="customRegistryGroup" style="display:none;">
+                    <div class="form-group" id="customRegistryGroup" style="display:none; margin-left: 30px;">
                         <label for="customRegistry">Registry</label>
                         <input type="text" id="customRegistry" placeholder="my-registry.example.com">
                     </div>
                     
-                    <div class="form-group" id="imagePullSecretGroup" style="display:none;">
+                    <div class="form-group" id="imagePullSecretGroup" style="display:none; margin-left: 30px;">
                         <label for="imagePullSecret">Pull Secret</label>
                         <input type="text" id="imagePullSecret" placeholder="my-pull-secret">
                     </div>
@@ -435,7 +435,7 @@
                         </div>
                     </div>
                     
-                    <div class="form-group" id="prometheusTypeGroup">
+                    <div class="form-group" id="prometheusTypeGroup" style="margin-left: 30px;">
                         <label for="prometheusType">Prometheus Type</label>
                         <select id="prometheusType">
                             <option value="portworx">Portworx Managed</option>
@@ -450,11 +450,16 @@
                         </div>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group" id="storkWebhookGroup" style="margin-left: 30px;">
                         <div class="checkbox-group">
                             <input type="checkbox" id="useStorkWebhook" checked>
                             <label for="useStorkWebhook" id="storkWebhookLabel">Stork Webhook Controller</label>
                         </div>
+                    </div>
+                    
+                    <div class="form-group" id="storkAdminNamespaceGroup" style="margin-left: 30px;">
+                        <label for="storkAdminNamespace">Admin Namespace</label>
+                        <input type="text" id="storkAdminNamespace" value="kube-system">
                     </div>
                     
                     <div class="form-group">
@@ -478,14 +483,21 @@
                         </div>
                     </div>
                     
-                    <div class="form-group" id="guestAccessGroup" style="display:none;">
+                    <div class="form-group" id="guestAccessGroup" style="display:none; margin-left: 30px;">
                         <div class="checkbox-group">
                             <input type="checkbox" id="useGuestAccess">
                             <label for="useGuestAccess">Guest Access</label>
                         </div>
                     </div>
                     
-                    <div class="form-group" id="prometheusUrlGroup" style="display:none;">
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useDefaultStorageClasses" checked>
+                            <label for="useDefaultStorageClasses">Default StorageClasses</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="prometheusUrlGroup" style="display:none; margin-left: 30px;">
                         <label for="prometheusUrl">Prometheus URL</label>
                         <input type="text" id="prometheusUrl" placeholder="http://prometheus:9090">
                     </div>
@@ -574,8 +586,10 @@
                     'imagePullSecretGroup', 'imagePullSecret',
                     'useMonitoring', 'prometheusType', 'prometheusTypeGroup', 
                     'prometheusUrl', 'prometheusUrlGroup',
-                    'useStork', 'useStorkWebhook', 'storkWebhookLabel',
+                    'useStork', 'storkWebhookGroup', 'useStorkWebhook', 'storkWebhookLabel', 
+                    'storkAdminNamespaceGroup', 'storkAdminNamespace',
                     'useTelemetry', 'useAutopilot', 'useAuthorization', 'guestAccessGroup', 'useGuestAccess',
+                    'useDefaultStorageClasses',
                     's3CertCheckbox', 's3CertContent', 's3CertContainer',
                     'nodeConfigsContainer', 'addNodeConfigBtn',
                     'yamlOutput', 'copyBtn', 'commandsOutput', 'copyCommandBtn'
@@ -626,9 +640,14 @@
                     this.elements.kvdbDeviceType.disabled = true;
                 }
                 
-                // Set initial webhook visibility based on stork state
+                // Set initial Stork fields visibility based on stork state
                 const isStorkEnabled = this.elements.useStork.checked;
-                this.elements.useStorkWebhook.parentElement.parentElement.style.display = isStorkEnabled ? 'block' : 'none';
+                this.elements.storkWebhookGroup.style.display = isStorkEnabled ? 'flex' : 'none';
+                this.elements.storkAdminNamespaceGroup.style.display = isStorkEnabled ? 'flex' : 'none';
+                
+                // Set initial Prometheus Type visibility based on monitoring state
+                const isMonitoringEnabled = this.elements.useMonitoring.checked;
+                this.elements.prometheusTypeGroup.style.display = isMonitoringEnabled ? 'flex' : 'none';
             },
             
             handleKvdbTypeChange() {
@@ -772,7 +791,8 @@
             
             handleStorkChange() {
                 const isEnabled = this.elements.useStork.checked;
-                this.elements.useStorkWebhook.parentElement.parentElement.style.display = isEnabled ? 'block' : 'none';
+                this.elements.storkWebhookGroup.style.display = isEnabled ? 'flex' : 'none';
+                this.elements.storkAdminNamespaceGroup.style.display = isEnabled ? 'flex' : 'none';
                 
                 if (!isEnabled) {
                     this.elements.useStorkWebhook.checked = false;
@@ -795,7 +815,7 @@
             handleMonitoringChange() {
                 const isEnabled = this.elements.useMonitoring.checked;
                 this.elements.prometheusType.disabled = !isEnabled;
-                this.elements.prometheusTypeGroup.style.opacity = isEnabled ? '1' : '0.5';
+                this.elements.prometheusTypeGroup.style.display = isEnabled ? 'flex' : 'none';
                 
                 if (!isEnabled) {
                     this.elements.prometheusUrlGroup.style.display = 'none';
@@ -1216,10 +1236,12 @@
                     prometheusUrl: this.elements.prometheusUrl.value || '',
                     useStork: this.elements.useStork.checked || false,
                     useStorkWebhook: this.elements.useStorkWebhook.checked || false,
+                    storkAdminNamespace: this.elements.storkAdminNamespace.value || 'kube-system',
                     useTelemetry: this.elements.useTelemetry.checked !== false,
                     useAutopilot: this.elements.useAutopilot.checked || false,
                     useAuthorization: this.elements.useAuthorization.checked || false,
-                    useGuestAccess: this.elements.useGuestAccess.checked || false
+                    useGuestAccess: this.elements.useGuestAccess.checked || false,
+                    useDefaultStorageClasses: this.elements.useDefaultStorageClasses.checked !== false
                 };
                 
                 let kvdbDevice = '';
@@ -1368,6 +1390,9 @@ metadata:
                 }
                 if (values.storeVersion === 'v2' && values.storageType !== 'cloud') {
                     annotations.push('    portworx.io/misc-args: " -T px-storev2 "');
+                }
+                if (!values.useDefaultStorageClasses) {
+                    annotations.push('    portworx.io/disable-storage-class: "true"');
                 }
                 
                 if (annotations.length > 0) {
@@ -1639,7 +1664,8 @@ ${indentedCert}
                 let storkSpec = '\n  stork:\n';
                 if (values.useStork) {
                     storkSpec += '    enabled: true\n';
-                    storkSpec += `    args:\n      webhook-controller: "${values.useStorkWebhook}"`;
+                    storkSpec += `    args:\n      admin-namespace: "${values.storkAdminNamespace}"\n`;
+                    storkSpec += `      webhook-controller: "${values.useStorkWebhook}"`;
                     
                     // Add S3 certificate configuration to stork ONLY if stork is enabled
                     if (hasS3Cert) {
