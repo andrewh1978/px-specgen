@@ -478,6 +478,13 @@
                         </div>
                     </div>
                     
+                    <div class="form-group" id="guestAccessGroup" style="display:none;">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useGuestAccess">
+                            <label for="useGuestAccess">Guest Access</label>
+                        </div>
+                    </div>
+                    
                     <div class="form-group" id="prometheusUrlGroup" style="display:none;">
                         <label for="prometheusUrl">Prometheus URL</label>
                         <input type="text" id="prometheusUrl" placeholder="http://prometheus:9090">
@@ -568,7 +575,7 @@
                     'useMonitoring', 'prometheusType', 'prometheusTypeGroup', 
                     'prometheusUrl', 'prometheusUrlGroup',
                     'useStork', 'useStorkWebhook', 'storkWebhookLabel',
-                    'useTelemetry', 'useAutopilot', 'useAuthorization',
+                    'useTelemetry', 'useAutopilot', 'useAuthorization', 'guestAccessGroup', 'useGuestAccess',
                     's3CertCheckbox', 's3CertContent', 's3CertContainer',
                     'nodeConfigsContainer', 'addNodeConfigBtn',
                     'yamlOutput', 'copyBtn', 'commandsOutput', 'copyCommandBtn'
@@ -590,6 +597,7 @@
                 this.elements.useMonitoring.addEventListener('change', () => this.handleMonitoringChange());
                 this.elements.useCustomRegistry.addEventListener('change', () => this.handleCustomRegistryChange());
                 this.elements.prometheusType.addEventListener('change', () => this.handlePrometheusTypeChange());
+                this.elements.useAuthorization.addEventListener('change', () => this.handleAuthorizationChange());
                 this.elements.s3CertCheckbox.addEventListener('change', () => this.handleS3CertChange());
                 this.elements.s3CertContent.addEventListener('input', () => this.generateYAML());
                 this.elements.addCloudDriveBtn.addEventListener('click', () => this.addCloudDrive());
@@ -768,6 +776,17 @@
                 
                 if (!isEnabled) {
                     this.elements.useStorkWebhook.checked = false;
+                }
+                
+                this.generateYAML();
+            },
+            
+            handleAuthorizationChange() {
+                const isEnabled = this.elements.useAuthorization.checked;
+                this.elements.guestAccessGroup.style.display = isEnabled ? 'flex' : 'none';
+                
+                if (!isEnabled) {
+                    this.elements.useGuestAccess.checked = false;
                 }
                 
                 this.generateYAML();
@@ -1199,7 +1218,8 @@
                     useStorkWebhook: this.elements.useStorkWebhook.checked || false,
                     useTelemetry: this.elements.useTelemetry.checked !== false,
                     useAutopilot: this.elements.useAutopilot.checked || false,
-                    useAuthorization: this.elements.useAuthorization.checked || false
+                    useAuthorization: this.elements.useAuthorization.checked || false,
+                    useGuestAccess: this.elements.useGuestAccess.checked || false
                 };
                 
                 let kvdbDevice = '';
@@ -1555,6 +1575,9 @@ metadata:
                 
                 // security
                 yaml += `\n  security:\n    enabled: ${values.useAuthorization}`;
+                if (values.useAuthorization && values.useGuestAccess) {
+                    yaml += `\n    auth:\n      guestAccess: Enabled`;
+                }
                 
                 // startPort
                 const startPort = values.distribution === 'openshift' ? 17001 : 9001;
