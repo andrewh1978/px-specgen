@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portworx StorageCluster Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #fe5000;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .content-wrapper {
+            display: flex;
+            min-height: 600px;
+        }
+        
+        .form-section {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            max-height: 80vh;
+        }
+        
+        .output-section {
+            flex: 1;
+            padding: 30px;
+            background: #f7fafc;
+            border-left: 2px solid #e2e8f0;
+            overflow-y: auto;
+            max-height: 80vh;
+        }
+        
+        .output-section h2 {
+            margin-bottom: 15px;
+            color: #2d3748;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        label {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 14px;
+            min-width: 200px;
+            margin-bottom: 0;
+        }
+        
+        input[type="text"],
+        input[type="number"],
+        select {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        input[type="text"]:disabled,
+        input[type="number"]:disabled {
+            background-color: #f7fafc;
+            cursor: not-allowed;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        
+        .checkbox-group label {
+            min-width: auto;
+            margin-bottom: 0;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            margin: 0;
+        }
+        
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        input[type="checkbox"]:disabled {
+            cursor: not-allowed;
+        }
+        
+        .help-text {
+            font-size: 11px;
+            color: #718096;
+            margin-top: 4px;
+            display: none;
+        }
+        
+        .btn-copy {
+            background: #48bb78;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn-copy:hover {
+            background: #38a169;
+        }
+        
+        .btn-add {
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn-add:hover {
+            background: #5568d3;
+        }
+        
+        .btn-remove {
+            background: #f56565;
+            color: white;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            height: 42px;
+        }
+        
+        .btn-remove:hover {
+            background: #e53e3e;
+        }
+        
+        pre {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        .yaml-key { color: #81e6d9; }
+        .yaml-string { color: #f6ad55; }
+        .yaml-number { color: #fc8181; }
+        .yaml-boolean { color: #90cdf4; }
+
+        @media (max-width: 1024px) {
+            .content-wrapper {
+                flex-direction: column;
+            }
+            
+            .output-section {
+                border-left: none;
+                border-top: 2px solid #e2e8f0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Portworx StorageCluster Generator</h1>
+        </div>
+        
+        <div class="content-wrapper">
+            <div class="form-section">
+                <form id="pxForm">
+                    <div class="form-group">
+                        <label for="distribution">Distribution</label>
+                        <select id="distribution">
+                            <option value="other">Other</option>
+                            <option value="openshift">OpenShift 4</option>
+                            <option value="pks">PKS</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="kubernetesVersion">Kubernetes Version</label>
+                        <input type="text" id="kubernetesVersion" value="1.35.0">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="clusterName">StorageCluster Name</label>
+                        <input type="text" id="clusterName" value="px-cluster">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="namespace">Namespace</label>
+                        <input type="text" id="namespace" value="portworx">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="imageVersion">Portworx Version</label>
+                        <input type="text" id="imageVersion" value="3.4.1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="secretsProvider">Secrets Provider</label>
+                        <select id="secretsProvider">
+                            <option value="k8s">Kubernetes Secrets</option>
+                            <option value="vault">Vault</option>
+                            <option value="aws-kms">AWS KMS</option>
+                            <option value="azure-kv">Azure Key Vault</option>
+                            <option value="gcp-kms">Google Cloud KMS</option>
+                            <option value="ibm-kp">IBM Key Protect</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="kvdbType">KVDB Type</label>
+                        <select id="kvdbType">
+                            <option value="internal">Internal KVDB</option>
+                            <option value="external">External KVDB</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="internalKvdbTlsGroup">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="internalKvdbTls">
+                            <label for="internalKvdbTls" id="internalKvdbTlsLabel">TLS for Internal KVDB</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="certManagerGroup">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="certManager">
+                            <label for="certManager" id="certManagerLabel">cert-manager Integration</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="kvdbUrlGroup" style="display:none;">
+                        <label for="kvdbUrl">KVDB Endpoints</label>
+                        <input type="text" id="kvdbUrl" placeholder="http://etcd-1:2379,http://etcd-2:2379">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="storageType">Storage Configuration</label>
+                        <select id="storageType">
+                            <option value="useAll">Use All Available Devices</option>
+                            <option value="manual">Manual Device Selection</option>
+                            <option value="cloud">Cloud Storage</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="cloudProviderGroup" style="display:none;">
+                        <label for="cloudProvider">Cloud Provider</label>
+                        <select id="cloudProvider">
+                            <option value="aws">AWS</option>
+                            <option value="azure">Azure</option>
+                            <option value="gcp">Google Cloud</option>
+                            <option value="vsphere">vSphere</option>
+                            <option value="pure">Pure FlashArray</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="storeVersionGroup">
+                        <label for="storeVersion">Store Version</label>
+                        <select id="storeVersion">
+                            <option value="v1">StoreV1</option>
+                            <option value="v2">StoreV2</option>
+                        </select>
+                    </div>
+                    
+                    <div id="vsphereConfigGroup" style="display:none;">
+                        <div class="form-group">
+                            <label for="vsphereVcenter">vCenter Endpoint</label>
+                            <input type="text" id="vsphereVcenter" placeholder="vcenter.example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="vsphereVcenterPort">vCenter Port</label>
+                            <input type="text" id="vsphereVcenterPort" value="443">
+                        </div>
+                        <div class="form-group">
+                            <label for="vsphereDatastorePrefix">Datastore Prefix</label>
+                            <input type="text" id="vsphereDatastorePrefix" placeholder="datastore">
+                        </div>
+                    </div>
+                    
+                    <div id="cloudDrivesContainer"></div>
+                    
+                    <div class="form-group" id="addCloudDriveGroup" style="display:none;">
+                        <label></label>
+                        <button type="button" id="addCloudDriveBtn" class="btn-add">+ Add Cloud Drive</button>
+                    </div>
+                    
+                    <div class="form-group" id="manualDevicesGroup" style="display:none;">
+                        <label for="storageDevices">Storage Devices</label>
+                        <input type="text" id="storageDevices" placeholder="/dev/sdb,/dev/sdc">
+                    </div>
+                    
+                    <div class="form-group" id="metadataPathGroup" style="display:none;">
+                        <label for="metadataPath">Metadata Path</label>
+                        <input type="text" id="metadataPath" placeholder="/dev/sda">
+                    </div>
+                    
+                    <div class="form-group" id="kvdbDeviceGroup">
+                        <label for="kvdbDeviceType">KVDB Device</label>
+                        <select id="kvdbDeviceType">
+                            <option value="none">None</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="customKvdbDeviceGroup" style="display:none;">
+                        <label for="customKvdbDevice">Custom KVDB Device</label>
+                        <input type="text" id="customKvdbDevice" placeholder="/dev/sda">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="journalDeviceType">Journal Device</label>
+                        <select id="journalDeviceType">
+                            <option value="none">None</option>
+                            <option value="auto">Auto</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="customJournalDeviceGroup" style="display:none;">
+                        <label for="customJournalDevice">Custom Journal Device</label>
+                        <input type="text" id="customJournalDevice" placeholder="/dev/sdd">
+                    </div>
+                    
+                    <div id="cloudJournalDeviceGroup" style="display:none; margin-bottom: 15px; margin-left: 215px;">
+                        <div style="display: flex; gap: 15px;">
+                            <div style="flex: 1;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748; font-size: 14px;">Journal Disk Type</label>
+                                <select id="cloudJournalType" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                    <option value="gp3">gp3</option>
+                                    <option value="gp2">gp2</option>
+                                    <option value="io1">io1</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748; font-size: 14px;">Journal Size (GB)</label>
+                                <input type="number" id="cloudJournalSize" value="3" min="1" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dataInterface">Data Interface</label>
+                        <input type="text" id="dataInterface" value="auto">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="mgmtInterface">Management Interface</label>
+                        <input type="text" id="mgmtInterface" value="auto">
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useCustomRegistry">
+                            <label for="useCustomRegistry">Custom Image Registry</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="customRegistryGroup" style="display:none;">
+                        <label for="customRegistry">Registry</label>
+                        <input type="text" id="customRegistry" placeholder="my-registry.example.com">
+                    </div>
+                    
+                    <div class="form-group" id="imagePullSecretGroup" style="display:none;">
+                        <label for="imagePullSecret">Pull Secret</label>
+                        <input type="text" id="imagePullSecret" placeholder="my-pull-secret">
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useMonitoring" checked>
+                            <label for="useMonitoring">Monitoring (Prometheus)</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="prometheusTypeGroup">
+                        <label for="prometheusType">Prometheus Type</label>
+                        <select id="prometheusType">
+                            <option value="portworx">Portworx Managed</option>
+                            <option value="user">User Managed</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useStork" checked>
+                            <label for="useStork">Stork (Storage Orchestrator)</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useStorkWebhook" checked>
+                            <label for="useStorkWebhook" id="storkWebhookLabel">Stork Webhook Controller</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useTelemetry" checked>
+                            <label for="useTelemetry">Telemetry</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useAutopilot" checked>
+                            <label for="useAutopilot">Autopilot</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useAuthorization">
+                            <label for="useAuthorization">Authorization</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="prometheusUrlGroup" style="display:none;">
+                        <label for="prometheusUrl">Prometheus URL</label>
+                        <input type="text" id="prometheusUrl" placeholder="http://prometheus:9090">
+                    </div>
+                    
+                    <div style="border-top: 2px solid #e2e8f0; margin: 30px 0 20px 0; padding-top: 20px;">
+                        <h3 style="margin-bottom: 20px; color: #2d3748;">Node-Specific Configuration</h3>
+                        
+                        <div id="nodeConfigsContainer"></div>
+                        
+                        <div class="form-group">
+                            <label></label>
+                            <button type="button" id="addNodeConfigBtn" class="btn-add">+ Add Node Configuration</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="output-section">
+                <h2>
+                    Generated YAML
+                    <button type="button" class="btn-copy" id="copyBtn">Copy</button>
+                </h2>
+                <pre id="yamlOutput"></pre>
+                
+                <h2 style="margin-top: 30px;">
+                    Commands
+                    <button type="button" class="btn-copy" id="copyCommandBtn">Copy</button>
+                </h2>
+                <pre id="commandsOutput"></pre>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const app = {
+            elements: {},
+            cloudDrives: [],
+            cloudDriveCounter: 0,
+            nodeConfigs: [],
+            nodeConfigCounter: 0,
+            
+            init() {
+                this.cacheElements();
+                this.setupEventListeners();
+                this.setInitialState();
+                this.generateYAML();
+            },
+            
+            cacheElements() {
+                const ids = [
+                    'pxForm', 'distribution', 'kubernetesVersion', 'clusterName', 'namespace', 'imageVersion',
+                    'secretsProvider', 'kvdbType', 'kvdbDeviceGroup', 'kvdbDeviceType', 
+                    'customKvdbDeviceGroup', 'customKvdbDevice',
+                    'internalKvdbTlsGroup', 'internalKvdbTls', 'internalKvdbTlsLabel',
+                    'certManagerGroup', 'certManager', 'certManagerLabel',
+                    'kvdbUrlGroup', 'kvdbUrl', 'storageType',
+                    'cloudProviderGroup', 'cloudProvider', 'storeVersion', 'storeVersionGroup',
+                    'cloudDrivesContainer',
+                    'vsphereConfigGroup', 'vsphereVcenter', 'vsphereVcenterPort', 'vsphereDatastorePrefix',
+                    'addCloudDriveGroup', 'addCloudDriveBtn',
+                    'manualDevicesGroup', 'storageDevices',
+                    'metadataPath', 'metadataPathGroup',
+                    'journalDeviceType', 'customJournalDeviceGroup', 'customJournalDevice',
+                    'cloudJournalDeviceGroup', 'cloudJournalType', 'cloudJournalSize',
+                    'dataInterface', 'mgmtInterface',
+                    'useCustomRegistry', 'customRegistryGroup', 'customRegistry',
+                    'imagePullSecretGroup', 'imagePullSecret',
+                    'useMonitoring', 'prometheusType', 'prometheusTypeGroup', 
+                    'prometheusUrl', 'prometheusUrlGroup',
+                    'useStork', 'useStorkWebhook', 'storkWebhookLabel',
+                    'useTelemetry', 'useAutopilot', 'useAuthorization',
+                    'nodeConfigsContainer', 'addNodeConfigBtn',
+                    'yamlOutput', 'copyBtn', 'commandsOutput', 'copyCommandBtn'
+                ];
+                
+                ids.forEach(id => {
+                    this.elements[id] = document.getElementById(id);
+                });
+            },
+            
+            setupEventListeners() {
+                this.elements.kvdbType.addEventListener('change', () => this.handleKvdbTypeChange());
+                this.elements.storageType.addEventListener('change', () => this.handleStorageTypeChange());
+                this.elements.storeVersion.addEventListener('change', () => this.handleStoreVersionChange());
+                this.elements.cloudProvider.addEventListener('change', () => this.handleCloudProviderChange());
+                this.elements.journalDeviceType.addEventListener('change', () => this.handleJournalDeviceTypeChange());
+                this.elements.kvdbDeviceType.addEventListener('change', () => this.handleKvdbDeviceTypeChange());
+                this.elements.useStork.addEventListener('change', () => this.handleStorkChange());
+                this.elements.useMonitoring.addEventListener('change', () => this.handleMonitoringChange());
+                this.elements.useCustomRegistry.addEventListener('change', () => this.handleCustomRegistryChange());
+                this.elements.prometheusType.addEventListener('change', () => this.handlePrometheusTypeChange());
+                this.elements.addCloudDriveBtn.addEventListener('click', () => this.addCloudDrive());
+                this.elements.addNodeConfigBtn.addEventListener('click', () => this.addNodeConfig());
+                this.elements.copyBtn.addEventListener('click', () => this.copyYAML());
+                this.elements.copyCommandBtn.addEventListener('click', () => this.copyCommands());
+                
+                const inputs = this.elements.pxForm.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    input.addEventListener('input', () => this.generateYAML());
+                    input.addEventListener('change', () => this.generateYAML());
+                });
+            },
+            
+            setInitialState() {
+                const isInternal = this.elements.kvdbType.value === 'internal';
+                this.elements.kvdbDeviceGroup.style.display = isInternal ? 'flex' : 'none';
+                this.elements.kvdbUrlGroup.style.display = isInternal ? 'none' : 'flex';
+                this.elements.kvdbUrl.disabled = isInternal;
+                
+                // Hide instead of grey out
+                this.elements.internalKvdbTlsGroup.style.display = isInternal ? 'flex' : 'none';
+                this.elements.certManagerGroup.style.display = isInternal ? 'flex' : 'none';
+                
+                if (!isInternal) {
+                    this.elements.kvdbDeviceType.disabled = true;
+                }
+                
+                // Set initial webhook visibility based on stork state
+                const isStorkEnabled = this.elements.useStork.checked;
+                this.elements.useStorkWebhook.parentElement.parentElement.style.display = isStorkEnabled ? 'block' : 'none';
+            },
+            
+            handleKvdbTypeChange() {
+                const isInternal = this.elements.kvdbType.value === 'internal';
+                
+                this.elements.kvdbDeviceGroup.style.display = isInternal ? 'flex' : 'none';
+                this.elements.kvdbUrlGroup.style.display = isInternal ? 'none' : 'flex';
+                this.elements.kvdbDeviceType.disabled = !isInternal;
+                this.elements.kvdbUrl.disabled = isInternal;
+                
+                // Hide instead of grey out
+                this.elements.internalKvdbTlsGroup.style.display = isInternal ? 'flex' : 'none';
+                this.elements.certManagerGroup.style.display = isInternal ? 'flex' : 'none';
+                
+                if (!isInternal) {
+                    this.elements.kvdbDeviceType.value = 'none';
+                    this.elements.customKvdbDeviceGroup.style.display = 'none';
+                    this.elements.internalKvdbTls.checked = false;
+                    this.elements.certManager.checked = false;
+                } else {
+                    this.elements.kvdbUrl.value = '';
+                }
+                
+                this.generateYAML();
+            },
+            
+            handleKvdbDeviceTypeChange() {
+                this.elements.customKvdbDeviceGroup.style.display = 
+                    this.elements.kvdbDeviceType.value === 'custom' ? 'block' : 'none';
+                this.generateYAML();
+            },
+            
+            handleStorageTypeChange() {
+                const isManual = this.elements.storageType.value === 'manual';
+                const isCloud = this.elements.storageType.value === 'cloud';
+                
+                this.elements.manualDevicesGroup.style.display = isManual ? 'flex' : 'none';
+                this.elements.cloudProviderGroup.style.display = isCloud ? 'flex' : 'none';
+                this.elements.addCloudDriveGroup.style.display = isCloud ? 'flex' : 'none';
+                this.elements.storeVersionGroup.style.display = isCloud ? 'none' : 'flex';
+                
+                if (isCloud) {
+                    this.elements.kvdbDeviceGroup.style.display = 'none';
+                    this.elements.customKvdbDeviceGroup.style.display = 'none';
+                    this.elements.journalDeviceType.parentElement.style.display = 'flex';
+                    this.elements.metadataPathGroup.style.display = 'none';
+                    if (this.cloudDrives.length === 0) {
+                        this.addCloudDrive();
+                    }
+                } else {
+                    if (this.elements.kvdbType.value === 'internal') {
+                        this.elements.kvdbDeviceGroup.style.display = 'flex';
+                    } else {
+                        this.elements.kvdbDeviceGroup.style.display = 'none';
+                    }
+                    this.elements.journalDeviceType.parentElement.style.display = 'flex';
+                    this.elements.cloudDrivesContainer.innerHTML = '';
+                    this.cloudDrives = [];
+                    this.handleStoreVersionChange();
+                }
+                
+                this.handleJournalDeviceTypeChange();
+                this.generateYAML();
+            },
+            
+            handleStoreVersionChange() {
+                const isStoreV2 = this.elements.storeVersion.value === 'v2';
+                const isCloud = this.elements.storageType.value === 'cloud';
+                this.elements.metadataPathGroup.style.display = (isStoreV2 && !isCloud) ? 'flex' : 'none';
+                this.generateYAML();
+            },
+            
+            handleCloudProviderChange() {
+                const provider = this.elements.cloudProvider.value;
+                const isPure = provider === 'pure';
+                const isVsphere = provider === 'vsphere';
+                
+                // Show/hide vSphere config
+                this.elements.vsphereConfigGroup.style.display = isVsphere ? 'block' : 'none';
+                
+                this.cloudDrives.forEach(driveId => {
+                    const driveDiv = document.getElementById(`cloudDrive-${driveId}`);
+                    if (driveDiv) {
+                        const typeContainer = driveDiv.querySelector('.type-container');
+                        const typeSelect = driveDiv.querySelector('.cloudDriveType');
+                        
+                        if (isPure) {
+                            if (typeContainer) typeContainer.style.display = 'none';
+                        } else {
+                            if (typeContainer) typeContainer.style.display = 'block';
+                            if (typeSelect) {
+                                typeSelect.innerHTML = this.getCloudDiskTypeOptions(provider);
+                            }
+                        }
+                    }
+                });
+                
+                // Update journal type visibility
+                const journalTypeContainer = this.elements.cloudJournalDeviceGroup.querySelector('.form-group');
+                if (journalTypeContainer) {
+                    journalTypeContainer.style.display = isPure ? 'none' : 'block';
+                }
+                
+                this.updateCloudJournalOptions();
+                this.generateYAML();
+            },
+            
+            handleJournalDeviceTypeChange() {
+                const isCloudStorage = this.elements.storageType.value === 'cloud';
+                const isCustom = this.elements.journalDeviceType.value === 'custom';
+                const isPure = this.elements.cloudProvider.value === 'pure';
+                
+                if (isCloudStorage && isCustom) {
+                    this.elements.customJournalDeviceGroup.style.display = 'none';
+                    this.elements.cloudJournalDeviceGroup.style.display = 'block';
+                    
+                    // Hide type dropdown for Pure FlashArray
+                    const journalTypeContainer = this.elements.cloudJournalDeviceGroup.querySelector('.form-group');
+                    if (journalTypeContainer) {
+                        journalTypeContainer.style.display = isPure ? 'none' : 'block';
+                    }
+                    
+                    this.updateCloudJournalOptions();
+                } else if (!isCloudStorage && isCustom) {
+                    this.elements.customJournalDeviceGroup.style.display = 'block';
+                    this.elements.cloudJournalDeviceGroup.style.display = 'none';
+                } else {
+                    this.elements.customJournalDeviceGroup.style.display = 'none';
+                    this.elements.cloudJournalDeviceGroup.style.display = 'none';
+                }
+                
+                this.generateYAML();
+            },
+            
+            updateCloudJournalOptions() {
+                const provider = this.elements.cloudProvider.value;
+                if (this.elements.cloudJournalType) {
+                    this.elements.cloudJournalType.innerHTML = this.getCloudDiskTypeOptions(provider);
+                }
+            },
+            
+            handleStorkChange() {
+                const isEnabled = this.elements.useStork.checked;
+                this.elements.useStorkWebhook.parentElement.parentElement.style.display = isEnabled ? 'block' : 'none';
+                
+                if (!isEnabled) {
+                    this.elements.useStorkWebhook.checked = false;
+                }
+                
+                this.generateYAML();
+            },
+            
+            handleMonitoringChange() {
+                const isEnabled = this.elements.useMonitoring.checked;
+                this.elements.prometheusType.disabled = !isEnabled;
+                this.elements.prometheusTypeGroup.style.opacity = isEnabled ? '1' : '0.5';
+                
+                if (!isEnabled) {
+                    this.elements.prometheusUrlGroup.style.display = 'none';
+                } else {
+                    this.handlePrometheusTypeChange();
+                }
+                
+                this.generateYAML();
+            },
+            
+            handleCustomRegistryChange() {
+                const isEnabled = this.elements.useCustomRegistry.checked;
+                this.elements.customRegistryGroup.style.display = isEnabled ? 'flex' : 'none';
+                this.elements.imagePullSecretGroup.style.display = isEnabled ? 'flex' : 'none';
+                this.generateYAML();
+            },
+            
+            handlePrometheusTypeChange() {
+                const isUserManaged = this.elements.prometheusType.value === 'user';
+                const isMonitoringEnabled = this.elements.useMonitoring.checked;
+                this.elements.prometheusUrlGroup.style.display = (isUserManaged && isMonitoringEnabled) ? 'flex' : 'none';
+                this.generateYAML();
+            },
+            
+            getCloudDiskTypeOptions(provider) {
+                const options = {
+                    aws: `
+                        <option value="gp3">gp3</option>
+                        <option value="gp2">gp2</option>
+                        <option value="io1">io1</option>
+                    `,
+                    gcp: `
+                        <option value="pd-standard">Standard</option>
+                        <option value="pd-ssd">SSD</option>
+                        <option value="pd-balanced">Balanced</option>
+                    `,
+                    azure: `
+                        <option value="Standard_LRS">Standard HDD</option>
+                        <option value="StandardSSD_LRS">Standard SSD</option>
+                        <option value="Premium_LRS">Premium SSD</option>
+                        <option value="PremiumV2_LRS">Premium SSD v2</option>
+                        <option value="UltraSSD_LRS">Ultra disk</option>
+                    `,
+                    vsphere: `
+                        <option value="lazyzeroedthick">Lazy-zeroed thick</option>
+                        <option value="eagerzeroedthick">Eager-zeroed thick</option>
+                        <option value="thin">Thin</option>
+                    `
+                };
+                return options[provider] || '';
+            },
+            
+            addCloudDrive() {
+                const driveId = this.cloudDriveCounter++;
+                const provider = this.elements.cloudProvider.value;
+                const isFirstDrive = this.cloudDrives.length === 0;
+                
+                const driveDiv = document.createElement('div');
+                driveDiv.id = `cloudDrive-${driveId}`;
+                driveDiv.style.marginBottom = '15px';
+                
+                if (isFirstDrive) {
+                    driveDiv.innerHTML = `
+                        <div style="display: flex; gap: 15px; align-items: flex-end;">
+                            <div class="form-group type-container" style="flex: 1; margin-bottom: 0; ${provider === 'pure' ? 'display: none;' : ''}">
+                                <label>Disk Type</label>
+                                <select class="cloudDriveType" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                    ${this.getCloudDiskTypeOptions(provider)}
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label>Size (GB)</label>
+                                <input type="number" class="cloudDriveSize" value="150" min="1" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                            </div>
+                            <button type="button" onclick="app.removeCloudDrive(${driveId})" class="btn-remove">Remove</button>
+                        </div>
+                    `;
+                } else {
+                    driveDiv.innerHTML = `
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <div class="type-container" style="flex: 1; ${provider === 'pure' ? 'display: none;' : ''}">
+                                <select class="cloudDriveType" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                    ${this.getCloudDiskTypeOptions(provider)}
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <input type="number" class="cloudDriveSize" value="150" min="1" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                            </div>
+                            <button type="button" onclick="app.removeCloudDrive(${driveId})" class="btn-remove">Remove</button>
+                        </div>
+                    `;
+                }
+                
+                this.elements.cloudDrivesContainer.appendChild(driveDiv);
+                this.cloudDrives.push(driveId);
+                
+                const typeSelect = driveDiv.querySelector('.cloudDriveType');
+                const sizeInput = driveDiv.querySelector('.cloudDriveSize');
+                if (typeSelect) typeSelect.addEventListener('change', () => this.generateYAML());
+                sizeInput.addEventListener('input', () => this.generateYAML());
+                
+                this.generateYAML();
+            },
+            
+            removeCloudDrive(driveId) {
+                const driveDiv = document.getElementById(`cloudDrive-${driveId}`);
+                if (driveDiv) {
+                    driveDiv.remove();
+                    this.cloudDrives = this.cloudDrives.filter(id => id !== driveId);
+                    this.generateYAML();
+                }
+            },
+            
+            addNodeConfig() {
+                const configId = this.nodeConfigCounter++;
+                const isCloud = this.elements.storageType.value === 'cloud';
+                
+                const configDiv = document.createElement('div');
+                configDiv.id = `nodeConfig-${configId}`;
+                configDiv.style.border = '2px solid #e2e8f0';
+                configDiv.style.borderRadius = '8px';
+                configDiv.style.padding = '20px';
+                configDiv.style.marginBottom = '20px';
+                configDiv.style.backgroundColor = '#f7fafc';
+                
+                configDiv.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0; color: #2d3748;">Node Configuration ${configId + 1}</h4>
+                        <button type="button" onclick="app.removeNodeConfig(${configId})" class="btn-remove">Remove</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Selector Type</label>
+                        <select class="nodeSelectorType" onchange="app.handleNodeSelectorTypeChange(${configId})">
+                            <option value="name">Node Name</option>
+                            <option value="label">Node Label</option>
+                        </select>
+                    </div>
+                    <div class="form-group nodeNameGroup-${configId}">
+                        <label>Node Name</label>
+                        <input type="text" class="nodeNameInput" placeholder="node-1">
+                    </div>
+                    <div class="form-group nodeLabelGroup-${configId}" style="display:none;">
+                        <label>Node Label</label>
+                        <input type="text" class="nodeLabelInput" placeholder="disktype=ssd">
+                    </div>
+                    ${isCloud ? `
+                    <div class="nodeCloudDrivesContainer-${configId}"></div>
+                    <div class="form-group">
+                        <label></label>
+                        <button type="button" onclick="app.addNodeCloudDrive(${configId})" class="btn-add">+ Add Drive</button>
+                    </div>
+                    <div class="form-group">
+                        <label>KVDB Device</label>
+                        <select class="nodeKvdbDeviceType-${configId}" onchange="app.handleNodeKvdbTypeChange(${configId})">
+                            <option value="none">None</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="nodeKvdbDeviceConfig-${configId}" style="display:none; margin-left: 215px; margin-bottom: 15px;">
+                        <div style="display: flex; gap: 15px;">
+                            <div class="nodeKvdbTypeContainer-${configId}" style="flex: 1;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748; font-size: 14px;">KVDB Disk Type</label>
+                                <select class="nodeKvdbDiskType" onchange="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                    ${this.getCloudDiskTypeOptions(this.elements.cloudProvider.value)}
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748; font-size: 14px;">KVDB Size (GB)</label>
+                                <input type="number" class="nodeKvdbDiskSize" value="150" min="1" oninput="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Journal Device</label>
+                        <select class="nodeJournalDeviceType-${configId}" onchange="app.handleNodeJournalTypeChange(${configId})">
+                            <option value="none">None</option>
+                            <option value="auto">Auto</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="nodeJournalDeviceConfig-${configId}" style="display:none; margin-left: 215px; margin-bottom: 15px;">
+                        <div style="display: flex; gap: 15px;">
+                            <div class="nodeJournalTypeContainer-${configId}" style="flex: 1;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748; font-size: 14px;">Journal Disk Type</label>
+                                <select class="nodeJournalDiskType" onchange="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                    ${this.getCloudDiskTypeOptions(this.elements.cloudProvider.value)}
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748; font-size: 14px;">Journal Size (GB)</label>
+                                <input type="number" class="nodeJournalDiskSize" value="3" min="1" oninput="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                            </div>
+                        </div>
+                    </div>
+                    ` : `
+                    <div class="form-group">
+                        <label>Storage Devices</label>
+                        <input type="text" class="nodeStorageDevices" placeholder="/dev/sdb,/dev/sdc">
+                    </div>
+                    <div class="form-group">
+                        <label>KVDB Device</label>
+                        <input type="text" class="nodeKvdbDevice" placeholder="/dev/sda">
+                    </div>
+                    <div class="form-group">
+                        <label>Journal Device</label>
+                        <input type="text" class="nodeJournalDevice" placeholder="auto or /dev/sdd">
+                    </div>
+                    ${this.elements.storeVersion.value === 'v2' ? `
+                    <div class="form-group">
+                        <label>Metadata Device</label>
+                        <input type="text" class="nodeMetadataDevice" placeholder="/dev/sde">
+                    </div>
+                    ` : ''}
+                    `}
+                `;
+                
+                this.elements.nodeConfigsContainer.appendChild(configDiv);
+                this.nodeConfigs.push({id: configId, cloudDrives: []});
+                
+                // Add event listeners
+                const inputs = configDiv.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    input.addEventListener('input', () => this.generateYAML());
+                    input.addEventListener('change', () => this.generateYAML());
+                });
+                
+                // If cloud storage, add initial drive
+                if (isCloud) {
+                    this.addNodeCloudDrive(configId);
+                }
+                
+                this.generateYAML();
+            },
+            
+            removeNodeConfig(configId) {
+                const configDiv = document.getElementById(`nodeConfig-${configId}`);
+                if (configDiv) {
+                    configDiv.remove();
+                    this.nodeConfigs = this.nodeConfigs.filter(c => c.id !== configId);
+                    this.generateYAML();
+                }
+            },
+            
+            handleNodeSelectorTypeChange(configId) {
+                const configDiv = document.getElementById(`nodeConfig-${configId}`);
+                const selectorType = configDiv.querySelector('.nodeSelectorType').value;
+                
+                configDiv.querySelector(`.nodeNameGroup-${configId}`).style.display = 
+                    selectorType === 'name' ? 'flex' : 'none';
+                configDiv.querySelector(`.nodeLabelGroup-${configId}`).style.display = 
+                    selectorType === 'label' ? 'flex' : 'none';
+                
+                this.generateYAML();
+            },
+            
+            handleNodeKvdbTypeChange(configId) {
+                const configDiv = document.getElementById(`nodeConfig-${configId}`);
+                const kvdbType = configDiv.querySelector(`.nodeKvdbDeviceType-${configId}`).value;
+                const kvdbConfig = configDiv.querySelector(`.nodeKvdbDeviceConfig-${configId}`);
+                
+                if (kvdbConfig) {
+                    kvdbConfig.style.display = kvdbType === 'custom' ? 'block' : 'none';
+                }
+                
+                // Handle Pure FlashArray - hide type dropdown
+                const provider = this.elements.cloudProvider.value;
+                const typeContainer = configDiv.querySelector(`.nodeKvdbTypeContainer-${configId}`);
+                if (typeContainer) {
+                    typeContainer.style.display = provider === 'pure' ? 'none' : 'block';
+                }
+                
+                this.generateYAML();
+            },
+            
+            handleNodeJournalTypeChange(configId) {
+                const configDiv = document.getElementById(`nodeConfig-${configId}`);
+                const journalType = configDiv.querySelector(`.nodeJournalDeviceType-${configId}`).value;
+                const journalConfig = configDiv.querySelector(`.nodeJournalDeviceConfig-${configId}`);
+                
+                if (journalConfig) {
+                    journalConfig.style.display = journalType === 'custom' ? 'block' : 'none';
+                }
+                
+                // Handle Pure FlashArray - hide type dropdown
+                const provider = this.elements.cloudProvider.value;
+                const typeContainer = configDiv.querySelector(`.nodeJournalTypeContainer-${configId}`);
+                if (typeContainer) {
+                    typeContainer.style.display = provider === 'pure' ? 'none' : 'block';
+                }
+                
+                this.generateYAML();
+            },
+            
+            addNodeCloudDrive(configId) {
+                const nodeConfig = this.nodeConfigs.find(c => c.id === configId);
+                if (!nodeConfig) return;
+                
+                const driveId = nodeConfig.cloudDrives.length;
+                const provider = this.elements.cloudProvider.value;
+                const container = document.querySelector(`.nodeCloudDrivesContainer-${configId}`);
+                
+                const driveDiv = document.createElement('div');
+                driveDiv.id = `nodeCloudDrive-${configId}-${driveId}`;
+                driveDiv.style.marginBottom = '15px';
+                
+                const isFirstDrive = nodeConfig.cloudDrives.length === 0;
+                const isPure = provider === 'pure';
+                
+                if (isFirstDrive) {
+                    driveDiv.innerHTML = `
+                        <div style="display: flex; gap: 15px; align-items: flex-end;">
+                            <div class="type-container" style="flex: 1; ${isPure ? 'display: none;' : ''}">
+                                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748; font-size: 14px;">Disk Type</label>
+                                <select class="nodeCloudDriveType" onchange="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                    ${this.getCloudDiskTypeOptions(provider)}
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748; font-size: 14px;">Size (GB)</label>
+                                <input type="number" class="nodeCloudDriveSize" value="150" min="1" oninput="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                            </div>
+                            <button type="button" onclick="app.removeNodeCloudDrive(${configId}, ${driveId})" class="btn-remove">Remove</button>
+                        </div>
+                    `;
+                } else {
+                    driveDiv.innerHTML = `
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <div class="type-container" style="flex: 1; ${isPure ? 'display: none;' : ''}">
+                                <select class="nodeCloudDriveType" onchange="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                    ${this.getCloudDiskTypeOptions(provider)}
+                                </select>
+                            </div>
+                            <div style="flex: 1;">
+                                <input type="number" class="nodeCloudDriveSize" value="150" min="1" oninput="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                            </div>
+                            <button type="button" onclick="app.removeNodeCloudDrive(${configId}, ${driveId})" class="btn-remove">Remove</button>
+                        </div>
+                    `;
+                }
+                
+                container.appendChild(driveDiv);
+                nodeConfig.cloudDrives.push(driveId);
+                
+                this.generateYAML();
+            },
+            
+            removeNodeCloudDrive(configId, driveId) {
+                const driveDiv = document.getElementById(`nodeCloudDrive-${configId}-${driveId}`);
+                if (driveDiv) {
+                    driveDiv.remove();
+                    const nodeConfig = this.nodeConfigs.find(c => c.id === configId);
+                    if (nodeConfig) {
+                        nodeConfig.cloudDrives = nodeConfig.cloudDrives.filter(id => id !== driveId);
+                    }
+                    this.generateYAML();
+                }
+            },
+            
+            copyYAML() {
+                const yamlText = this.elements.yamlOutput.textContent;
+                navigator.clipboard.writeText(yamlText).then(() => {
+                    const originalText = this.elements.copyBtn.textContent;
+                    this.elements.copyBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        this.elements.copyBtn.textContent = originalText;
+                    }, 2000);
+                });
+            },
+            
+            copyCommands() {
+                const commandsText = this.elements.commandsOutput.textContent;
+                navigator.clipboard.writeText(commandsText).then(() => {
+                    const originalText = this.elements.copyCommandBtn.textContent;
+                    this.elements.copyCommandBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        this.elements.copyCommandBtn.textContent = originalText;
+                    }, 2000);
+                });
+            },
+            
+            generateYAML() {
+                const values = {
+                    distribution: this.elements.distribution.value || 'other',
+                    kubernetesVersion: this.elements.kubernetesVersion.value || '1.35.0',
+                    clusterName: this.elements.clusterName.value || 'px-cluster',
+                    namespace: this.elements.namespace.value || 'portworx',
+                    imageVersion: this.elements.imageVersion.value || '3.4.1',
+                    secretsProvider: this.elements.secretsProvider.value || 'k8s',
+                    kvdbType: this.elements.kvdbType.value || 'internal',
+                    kvdbDeviceType: this.elements.kvdbDeviceType.value || 'none',
+                    customKvdbDevice: this.elements.customKvdbDevice.value || '',
+                    internalKvdbTls: this.elements.internalKvdbTls.checked || false,
+                    kvdbUrl: this.elements.kvdbUrl.value || '',
+                    certManager: this.elements.certManager.checked || false,
+                    storageType: this.elements.storageType.value || 'useAll',
+                    storeVersion: this.elements.storeVersion.value || 'v1',
+                    metadataPath: this.elements.metadataPath.value || '',
+                    storageDevices: this.elements.storageDevices.value || '',
+                    journalDeviceType: this.elements.journalDeviceType.value || 'none',
+                    customJournalDevice: this.elements.customJournalDevice.value || '',
+                    cloudProvider: this.elements.cloudProvider.value || 'aws',
+                    vsphereVcenter: this.elements.vsphereVcenter.value || '',
+                    vsphereVcenterPort: this.elements.vsphereVcenterPort.value || '443',
+                    vsphereDatastorePrefix: this.elements.vsphereDatastorePrefix.value || '',
+                    dataInterface: this.elements.dataInterface.value || 'auto',
+                    mgmtInterface: this.elements.mgmtInterface.value || 'auto',
+                    useCustomRegistry: this.elements.useCustomRegistry.checked || false,
+                    customRegistry: this.elements.customRegistry.value || '',
+                    imagePullSecret: this.elements.imagePullSecret.value || '',
+                    useMonitoring: this.elements.useMonitoring.checked || false,
+                    prometheusType: this.elements.prometheusType.value || 'portworx',
+                    prometheusUrl: this.elements.prometheusUrl.value || '',
+                    useStork: this.elements.useStork.checked || false,
+                    useStorkWebhook: this.elements.useStorkWebhook.checked || false,
+                    useTelemetry: this.elements.useTelemetry.checked !== false,
+                    useAutopilot: this.elements.useAutopilot.checked || false,
+                    useAuthorization: this.elements.useAuthorization.checked || false
+                };
+                
+                let kvdbDevice = '';
+                if (values.kvdbDeviceType === 'custom') {
+                    kvdbDevice = values.customKvdbDevice;
+                }
+                
+                let journalDevice = '';
+                if (values.journalDeviceType === 'auto') {
+                    journalDevice = 'auto';
+                } else if (values.journalDeviceType === 'custom') {
+                    if (values.storageType === 'cloud') {
+                        const cloudJournalSize = this.elements.cloudJournalSize.value || '3';
+                        if (values.cloudProvider === 'pure') {
+                            journalDevice = `size=${cloudJournalSize}`;
+                        } else {
+                            const cloudJournalType = this.elements.cloudJournalType.value;
+                            journalDevice = `type=${cloudJournalType},size=${cloudJournalSize}`;
+                        }
+                    } else {
+                        journalDevice = values.customJournalDevice;
+                    }
+                }
+                
+                let kvdbSpec = '  kvdb:\n';
+                if (values.kvdbType === 'internal') {
+                    kvdbSpec += '    internal: true\n';
+                    kvdbSpec += `    enableTLS: ${values.internalKvdbTls}`;
+                } else {
+                    kvdbSpec += '    internal: false';
+                    if (values.kvdbUrl) {
+                        kvdbSpec += '\n    endpoints:';
+                        values.kvdbUrl.split(',').forEach(endpoint => {
+                            kvdbSpec += `\n    - ${endpoint.trim()}`;
+                        });
+                    }
+                }
+                
+                let storageSpec = '';
+                
+                // Only generate storage spec for non-cloud storage
+                if (values.storageType !== 'cloud') {
+                    storageSpec = '  storage:\n';
+                    if (values.storageType === 'useAll') {
+                        storageSpec += '    useAll: true';
+                    } else if (values.storageType === 'manual') {
+                        storageSpec += '    useAll: false';
+                        if (values.storageDevices) {
+                            storageSpec += '\n    devices:';
+                            values.storageDevices.split(',').forEach(device => {
+                                storageSpec += `\n    - ${device.trim()}`;
+                            });
+                        }
+                    } else {
+                        storageSpec += '    useAll: true';
+                    }
+                    
+                    if (values.kvdbType === 'internal' && kvdbDevice) {
+                        storageSpec += `\n    kvdbDevice: ${kvdbDevice}`;
+                    }
+                    
+                    if (journalDevice && values.storageType !== 'cloud') {
+                        storageSpec += `\n    journalDevice: ${journalDevice}`;
+                    }
+                    
+                    if (values.storeVersion === 'v2' && values.metadataPath) {
+                        storageSpec += `\n    systemMetadataDevice: ${values.metadataPath}`;
+                    }
+                }
+                
+                let cloudStorageSpec = '';
+                if (values.storageType === 'cloud') {
+                    cloudStorageSpec = `  cloudStorage:\n    provider: ${values.cloudProvider}`;
+                    
+                    if (values.cloudProvider === 'pure') {
+                        const sizes = [];
+                        this.cloudDrives.forEach(driveId => {
+                            const driveDiv = document.getElementById(`cloudDrive-${driveId}`);
+                            if (driveDiv) {
+                                const sizeInput = driveDiv.querySelector('.cloudDriveSize');
+                                const size = sizeInput ? sizeInput.value : '150';
+                                if (size) {
+                                    sizes.push(`"size=${size}"`);
+                                }
+                            }
+                        });
+                        
+                        if (sizes.length > 0) {
+                            cloudStorageSpec += '\n    deviceSpecs:';
+                            sizes.forEach(spec => {
+                                cloudStorageSpec += `\n    - ${spec}`;
+                            });
+                        }
+                    } else {
+                        const deviceSpecs = [];
+                        this.cloudDrives.forEach(driveId => {
+                            const driveDiv = document.getElementById(`cloudDrive-${driveId}`);
+                            if (driveDiv) {
+                                const typeSelect = driveDiv.querySelector('.cloudDriveType');
+                                const sizeInput = driveDiv.querySelector('.cloudDriveSize');
+                                const type = typeSelect ? typeSelect.value : '';
+                                const size = sizeInput ? sizeInput.value : '150';
+                                if (type && size) {
+                                    deviceSpecs.push(`"type=${type},size=${size}"`);
+                                }
+                            }
+                        });
+                        
+                        if (deviceSpecs.length > 0) {
+                            cloudStorageSpec += '\n    deviceSpecs:';
+                            deviceSpecs.forEach(spec => {
+                                cloudStorageSpec += `\n    - ${spec}`;
+                            });
+                        }
+                    }
+                    
+                    if (values.journalDeviceType === 'custom' && journalDevice) {
+                        cloudStorageSpec += `\n    journalDeviceSpec: "${journalDevice}"`;
+                    }
+                }
+                
+                let networkSpec = '';
+                if (values.dataInterface || values.mgmtInterface) {
+                    networkSpec = '  network:\n';
+                    if (values.dataInterface) {
+                        networkSpec += `    dataInterface: ${values.dataInterface}\n`;
+                    }
+                    if (values.mgmtInterface) {
+                        networkSpec += `    mgmtInterface: ${values.mgmtInterface}`;
+                    }
+                }
+                
+                let yaml = `apiVersion: core.libopenstorage.org/v1
+kind: StorageCluster
+metadata:
+  name: ${values.clusterName}
+  namespace: ${values.namespace}`;
+                
+                // Add annotations
+                let annotations = [];
+                if (values.distribution === 'openshift') {
+                    annotations.push('    portworx.io/is-openshift: "true"');
+                }
+                if (values.distribution === 'pks') {
+                    annotations.push('    portworx.io/is-pks: "true"');
+                }
+                if (values.storeVersion === 'v2' && values.storageType !== 'cloud') {
+                    annotations.push('    portworx.io/misc-args: " -T px-storev2 "');
+                }
+                
+                if (annotations.length > 0) {
+                    yaml += '\n  annotations:\n' + annotations.join('\n');
+                }
+                
+                yaml += '\nspec:';
+                
+                // Alphabetically ordered spec sections
+                
+                // autopilot
+                let autopilotSpec = '\n  autopilot:\n';
+                autopilotSpec += `    enabled: ${values.useAutopilot}`;
+                if (values.useAutopilot && values.useMonitoring && 
+                    values.prometheusType === 'user' && values.prometheusUrl) {
+                    autopilotSpec += '\n    providers:\n';
+                    autopilotSpec += '    - name: default\n';
+                    autopilotSpec += '      type: prometheus\n';
+                    autopilotSpec += '      params:\n';
+                    autopilotSpec += `        url: ${values.prometheusUrl}`;
+                }
+                yaml += autopilotSpec;
+                
+                // certManager
+                yaml += `\n  certManager:\n    enabled: ${values.certManager}`;
+                
+                // cloudStorage (if applicable)
+                if (cloudStorageSpec) {
+                    yaml += '\n' + cloudStorageSpec;
+                }
+                
+                // customImageRegistry
+                if (values.useCustomRegistry && values.customRegistry) {
+                    yaml += `\n  customImageRegistry: ${values.customRegistry}`;
+                }
+                
+                // csi
+                yaml += '\n  csi:\n    enabled: true';
+                
+                // env (for vSphere)
+                if (values.storageType === 'cloud' && values.cloudProvider === 'vsphere') {
+                    yaml += '\n  env:';
+                    if (values.vsphereVcenter) {
+                        yaml += `\n  - name: VSPHERE_VCENTER\n    value: "${values.vsphereVcenter}"`;
+                    }
+                    if (values.vsphereVcenterPort) {
+                        yaml += `\n  - name: VSPHERE_VCENTER_PORT\n    value: "${values.vsphereVcenterPort}"`;
+                    }
+                    if (values.vsphereDatastorePrefix) {
+                        yaml += `\n  - name: VSPHERE_DATASTORE_PREFIX\n    value: "${values.vsphereDatastorePrefix}"`;
+                    }
+                    yaml += `\n  - name: VSPHERE_INSECURE\n    value: "true"`;
+                    yaml += `\n  - name: VSPHERE_INSTALL_MODE\n    value: "shared"`;
+                    yaml += `\n  - name: VSPHERE_USER\n    valueFrom:\n      secretKeyRef:\n        name: px-vsphere-secret\n        key: VSPHERE_USER`;
+                    yaml += `\n  - name: VSPHERE_PASSWORD\n    valueFrom:\n      secretKeyRef:\n        name: px-vsphere-secret\n        key: VSPHERE_PASSWORD`;
+                }
+                
+                // image
+                yaml += `\n  image: portworx/oci-monitor:${values.imageVersion}`;
+                
+                // imagePullPolicy
+                yaml += '\n  imagePullPolicy: Always';
+                
+                // imagePullSecret
+                if (values.useCustomRegistry && values.imagePullSecret) {
+                    yaml += `\n  imagePullSecret: ${values.imagePullSecret}`;
+                }
+                
+                // kvdb
+                yaml += '\n' + kvdbSpec;
+                
+                // monitoring
+                let monitoringSpec = '\n  monitoring:\n';
+                monitoringSpec += '    prometheus:\n';
+                monitoringSpec += `      enabled: ${values.useMonitoring}`;
+                if (values.useMonitoring && values.prometheusType === 'portworx') {
+                    monitoringSpec += '\n      exportMetrics: true';
+                }
+                monitoringSpec += '\n    telemetry:\n';
+                monitoringSpec += `      enabled: ${values.useTelemetry}`;
+                yaml += monitoringSpec;
+                
+                // network
+                if (networkSpec) {
+                    yaml += '\n' + networkSpec;
+                }
+                
+                // nodes (if any configured)
+                if (this.nodeConfigs.length > 0) {
+                    yaml += '\n  nodes:';
+                    this.nodeConfigs.forEach(nodeConfig => {
+                        const configDiv = document.getElementById(`nodeConfig-${nodeConfig.id}`);
+                        if (!configDiv) return;
+                        
+                        const selectorType = configDiv.querySelector('.nodeSelectorType').value;
+                        const nodeName = configDiv.querySelector('.nodeNameInput').value;
+                        const nodeLabel = configDiv.querySelector('.nodeLabelInput').value;
+                        
+                        yaml += '\n  - selector:';
+                        if (selectorType === 'name' && nodeName) {
+                            yaml += `\n      nodeName: ${nodeName}`;
+                        } else if (selectorType === 'label' && nodeLabel) {
+                            yaml += '\n      labelSelector:\n        matchLabels:\n';
+                            const [key, value] = nodeLabel.split('=');
+                            if (key && value) {
+                                yaml += `          ${key.trim()}: ${value.trim()}`;
+                            }
+                        }
+                        
+                        const isCloud = values.storageType === 'cloud';
+                        
+                        if (isCloud) {
+                            yaml += '\n    cloudStorage:';
+                            yaml += `\n      provider: ${values.cloudProvider}`;
+                            
+                            const container = configDiv.querySelector(`.nodeCloudDrivesContainer-${nodeConfig.id}`);
+                            if (container) {
+                                const deviceSpecs = [];
+                                const driveDivs = container.querySelectorAll('[id^="nodeCloudDrive-"]');
+                                driveDivs.forEach(driveDiv => {
+                                    const typeSelect = driveDiv.querySelector('.nodeCloudDriveType');
+                                    const sizeInput = driveDiv.querySelector('.nodeCloudDriveSize');
+                                    const type = typeSelect ? typeSelect.value : '';
+                                    const size = sizeInput ? sizeInput.value : '150';
+                                    
+                                    if (values.cloudProvider === 'pure') {
+                                        deviceSpecs.push(`"size=${size}"`);
+                                    } else if (type && size) {
+                                        deviceSpecs.push(`"type=${type},size=${size}"`);
+                                    }
+                                });
+                                
+                                if (deviceSpecs.length > 0) {
+                                    yaml += '\n      deviceSpecs:';
+                                    deviceSpecs.forEach(spec => {
+                                        yaml += `\n      - ${spec}`;
+                                    });
+                                }
+                            }
+                            
+                            // Handle KVDB device for cloud storage
+                            const kvdbTypeSelect = configDiv.querySelector(`.nodeKvdbDeviceType-${nodeConfig.id}`);
+                            if (kvdbTypeSelect && kvdbTypeSelect.value === 'custom') {
+                                const kvdbDiskType = configDiv.querySelector('.nodeKvdbDiskType')?.value;
+                                const kvdbDiskSize = configDiv.querySelector('.nodeKvdbDiskSize')?.value || '150';
+                                
+                                if (values.cloudProvider === 'pure') {
+                                    yaml += `\n      kvdbDeviceSpec: "size=${kvdbDiskSize}"`;
+                                } else if (kvdbDiskType) {
+                                    yaml += `\n      kvdbDeviceSpec: "type=${kvdbDiskType},size=${kvdbDiskSize}"`;
+                                }
+                            }
+                            
+                            // Handle Journal device for cloud storage
+                            const journalTypeSelect = configDiv.querySelector(`.nodeJournalDeviceType-${nodeConfig.id}`);
+                            if (journalTypeSelect) {
+                                const journalType = journalTypeSelect.value;
+                                if (journalType === 'auto') {
+                                    yaml += `\n      journalDeviceSpec: "auto"`;
+                                } else if (journalType === 'custom') {
+                                    const journalDiskType = configDiv.querySelector('.nodeJournalDiskType')?.value;
+                                    const journalDiskSize = configDiv.querySelector('.nodeJournalDiskSize')?.value || '3';
+                                    
+                                    if (values.cloudProvider === 'pure') {
+                                        yaml += `\n      journalDeviceSpec: "size=${journalDiskSize}"`;
+                                    } else if (journalDiskType) {
+                                        yaml += `\n      journalDeviceSpec: "type=${journalDiskType},size=${journalDiskSize}"`;
+                                    }
+                                }
+                            }
+                        } else {
+                            yaml += '\n    storage:';
+                            
+                            const storageDevices = configDiv.querySelector('.nodeStorageDevices')?.value;
+                            if (storageDevices) {
+                                yaml += '\n      devices:';
+                                storageDevices.split(',').forEach(device => {
+                                    yaml += `\n      - ${device.trim()}`;
+                                });
+                            }
+                            
+                            const kvdbDevice = configDiv.querySelector('.nodeKvdbDevice')?.value;
+                            if (kvdbDevice) {
+                                yaml += `\n      kvdbDevice: ${kvdbDevice}`;
+                            }
+                            
+                            const journalDevice = configDiv.querySelector('.nodeJournalDevice')?.value;
+                            if (journalDevice) {
+                                yaml += `\n      journalDevice: ${journalDevice}`;
+                            }
+                            
+                            const metadataDevice = configDiv.querySelector('.nodeMetadataDevice')?.value;
+                            if (metadataDevice) {
+                                yaml += `\n      systemMetadataDevice: ${metadataDevice}`;
+                            }
+                        }
+                    });
+                }
+                
+                // runtimeOptions
+                yaml += '\n  runtimeOptions:\n    default-io-profile: "6"';
+                
+                // secretsProvider
+                yaml += `\n  secretsProvider: ${values.secretsProvider}`;
+                
+                // security
+                yaml += `\n  security:\n    enabled: ${values.useAuthorization}`;
+                
+                // startPort
+                const startPort = values.distribution === 'openshift' ? 17001 : 9001;
+                yaml += `\n  startPort: ${startPort}`;
+                
+                // storage (if not cloud)
+                if (storageSpec) {
+                    yaml += '\n' + storageSpec;
+                }
+                
+                // stork
+                let storkSpec = '\n  stork:\n';
+                if (values.useStork) {
+                    storkSpec += '    enabled: true\n';
+                    storkSpec += `    args:\n      webhook-controller: "${values.useStorkWebhook}"`;
+                } else {
+                    storkSpec += '    enabled: false';
+                }
+                yaml += storkSpec;
+                
+                yaml = this.highlightYAML(yaml);
+                this.elements.yamlOutput.innerHTML = yaml;
+                
+                // Generate commands
+                const pxVersion = values.imageVersion;
+                const kbVersion = values.kubernetesVersion;
+                const namespace = values.namespace;
+                const command = `kubectl apply -f 'https://install.portworx.com/${pxVersion}?comp=pxoperator&kbver=${kbVersion}&ns=${namespace}'`;
+                this.elements.commandsOutput.textContent = command;
+            },
+            
+            highlightYAML(yaml) {
+                const lines = yaml.split('\n');
+                const highlighted = lines.map(line => {
+                    let escapedLine = line
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                    
+                    const keyMatch = escapedLine.match(/^(\s*)([a-zA-Z0-9_-]+):\s*(.*)$/);
+                    if (keyMatch) {
+                        const indent = keyMatch[1];
+                        const key = keyMatch[2];
+                        const value = keyMatch[3];
+                        
+                        let highlightedValue = value;
+                        
+                        if (value.match(/^".*"$/)) {
+                            highlightedValue = `<span class="yaml-string">${value}</span>`;
+                        } else if (value === 'true' || value === 'false') {
+                            highlightedValue = `<span class="yaml-boolean">${value}</span>`;
+                        } else if (value.match(/^\d+$/)) {
+                            highlightedValue = `<span class="yaml-number">${value}</span>`;
+                        }
+                        
+                        return `${indent}<span class="yaml-key">${key}</span>: ${highlightedValue}`;
+                    }
+                    
+                    const arrayMatch = escapedLine.match(/^(\s*-\s+)(".*")$/);
+                    if (arrayMatch) {
+                        return `${arrayMatch[1]}<span class="yaml-string">${arrayMatch[2]}</span>`;
+                    }
+                    
+                    return escapedLine;
+                });
+                
+                return highlighted.join('\n');
+            }
+        };
+        
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
