@@ -483,6 +483,25 @@
                         <input type="text" id="prometheusUrl" placeholder="http://prometheus:9090">
                     </div>
                     
+                    <!-- Certificates Section -->
+                    <div style="border-top: 2px solid #e2e8f0; margin: 30px 0 20px 0; padding-top: 20px;">
+                        <h3 style="margin-bottom: 20px; color: #2d3748;">Certificates</h3>
+                        
+                        <div class="form-group">
+                            <div class="checkbox-group" style="justify-content: flex-start;">
+                                <input type="checkbox" id="s3CertCheckbox">
+                                <label for="s3CertCheckbox">S3</label>
+                            </div>
+                        </div>
+                        
+                        <div id="s3CertContainer" style="display:none;">
+                            <div class="form-group" style="align-items: flex-start;">
+                                <label style="padding-top: 10px;">Certificate Content</label>
+                                <textarea id="s3CertContent" placeholder="Paste S3 certificate content here..." style="flex: 1; min-width: 200px; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px; font-family: monospace; min-height: 150px; resize: vertical;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div style="border-top: 2px solid #e2e8f0; margin: 30px 0 20px 0; padding-top: 20px;">
                         <h3 style="margin-bottom: 20px; color: #2d3748;">Node-Specific Configuration</h3>
                         
@@ -550,6 +569,7 @@
                     'prometheusUrl', 'prometheusUrlGroup',
                     'useStork', 'useStorkWebhook', 'storkWebhookLabel',
                     'useTelemetry', 'useAutopilot', 'useAuthorization',
+                    's3CertCheckbox', 's3CertContent', 's3CertContainer',
                     'nodeConfigsContainer', 'addNodeConfigBtn',
                     'yamlOutput', 'copyBtn', 'commandsOutput', 'copyCommandBtn'
                 ];
@@ -570,6 +590,8 @@
                 this.elements.useMonitoring.addEventListener('change', () => this.handleMonitoringChange());
                 this.elements.useCustomRegistry.addEventListener('change', () => this.handleCustomRegistryChange());
                 this.elements.prometheusType.addEventListener('change', () => this.handlePrometheusTypeChange());
+                this.elements.s3CertCheckbox.addEventListener('change', () => this.handleS3CertChange());
+                this.elements.s3CertContent.addEventListener('input', () => this.generateYAML());
                 this.elements.addCloudDriveBtn.addEventListener('click', () => this.addCloudDrive());
                 this.elements.addNodeConfigBtn.addEventListener('click', () => this.addNodeConfig());
                 this.elements.copyBtn.addEventListener('click', () => this.copyYAML());
@@ -1113,6 +1135,12 @@
                 }
             },
             
+            handleS3CertChange() {
+                const isChecked = this.elements.s3CertCheckbox.checked;
+                this.elements.s3CertContainer.style.display = isChecked ? 'block' : 'none';
+                this.generateYAML();
+            },
+            
             copyYAML() {
                 const yamlText = this.elements.yamlOutput.textContent;
                 navigator.clipboard.writeText(yamlText).then(() => {
@@ -1537,15 +1565,97 @@ metadata:
                     yaml += '\n' + storageSpec;
                 }
                 
+                // Check if S3 certificate is configured at top level
+                const hasS3Cert = this.elements.s3CertCheckbox.checked && this.elements.s3CertContent.value.trim();
+                const s3CertContent = hasS3Cert ? this.elements.s3CertContent.value.trim() : '';
+                
+                // Check if vSphere is configured
+                const isVsphere = values.storageType === 'cloud' && values.cloudProvider === 'vsphere';
+                
+                // Generate secrets YAML
+                let secretYaml = '';
+                
+                // vSphere secret
+                if (isVsphere) {
+                    secretYaml += `apiVersion: v1
+kind: Secret
+metadata:
+  name: px-vsphere-secret
+  namespace: ${values.namespace}
+type: Opaque
+stringData:
+  VSPHERE_USER: "<vcenter-username>"
+  VSPHERE_PASSWORD: "<vcenter-password>"
+---
+`;
+                }
+                
+                // S3 certificate secret
+                if (hasS3Cert) {
+                    // Indent certificate content for YAML
+                    const certLines = s3CertContent.split('\n');
+                    const indentedCert = certLines.map(line => '    ' + line).join('\n');
+                    
+                    secretYaml += `apiVersion: v1
+kind: Secret
+metadata:
+  name: s3-cert
+  namespace: ${values.namespace}
+type: Opaque
+stringData:
+  s3.crt: |
+${indentedCert}
+---
+`;
+                }
+                
+                // Prepend secrets to the main YAML
+                yaml = secretYaml + yaml;
+                
                 // stork
                 let storkSpec = '\n  stork:\n';
                 if (values.useStork) {
                     storkSpec += '    enabled: true\n';
                     storkSpec += `    args:\n      webhook-controller: "${values.useStorkWebhook}"`;
+                    
+                    // Add S3 certificate configuration to stork ONLY if stork is enabled
+                    if (hasS3Cert) {
+                        storkSpec += '\n';
+                        storkSpec += '    env:\n';
+                        storkSpec += '    - name: "AWS_CA_BUNDLE"\n';
+                        storkSpec += '      value: "/etc/pwx/certificates/s3.crt"\n';
+                        storkSpec += '    - name: "SSL_CERT_DIR"\n';
+                        storkSpec += '      value: "/etc/pwx/certificates"\n';
+                        storkSpec += '    volumes:\n';
+                        storkSpec += '    - name: s3-cert\n';
+                        storkSpec += '      mountPath: /etc/pwx/certificates\n';
+                        storkSpec += '      secret:\n';
+                        storkSpec += '        secretName: s3-cert\n';
+                        storkSpec += '        items:\n';
+                        storkSpec += '        - key: s3.crt\n';
+                        storkSpec += '          path: s3.crt';
+                    }
                 } else {
                     storkSpec += '    enabled: false';
                 }
                 yaml += storkSpec;
+                
+                // Add volumes section for S3 certificate at spec level
+                if (hasS3Cert) {
+                    yaml += '\n  volumes:\n';
+                    yaml += '  - name: s3-cert\n';
+                    yaml += '    mountPath: /etc/pwx/certificates\n';
+                    yaml += '    secret:\n';
+                    yaml += '      secretName: s3-cert\n';
+                    yaml += '      items:\n';
+                    yaml += '      - key: s3.crt\n';
+                    yaml += '        path: s3.crt';
+                    
+                    // Add env section at spec level
+                    yaml += '\n  env:\n';
+                    yaml += '  - name: "AWS_CA_BUNDLE"\n';
+                    yaml += '    value: "/etc/pwx/certificates/s3.crt"';
+                }
                 
                 yaml = this.highlightYAML(yaml);
                 this.elements.yamlOutput.innerHTML = yaml;
@@ -1555,6 +1665,7 @@ metadata:
                 const kbVersion = values.kubernetesVersion;
                 const namespace = values.namespace;
                 const command = `kubectl apply -f 'https://install.portworx.com/${pxVersion}?comp=pxoperator&kbver=${kbVersion}&ns=${namespace}'`;
+                
                 this.elements.commandsOutput.textContent = command;
             },
             
