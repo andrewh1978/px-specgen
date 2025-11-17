@@ -1432,22 +1432,39 @@ metadata:
                 // csi
                 yaml += '\n  csi:\n    enabled: true';
                 
-                // env (for vSphere)
-                if (values.storageType === 'cloud' && values.cloudProvider === 'vsphere') {
+                // Define cloud provider checks early
+                const isAWS = values.storageType === 'cloud' && values.cloudProvider === 'aws';
+                const isVsphere = values.storageType === 'cloud' && values.cloudProvider === 'vsphere';
+                const isPure = values.storageType === 'cloud' && values.cloudProvider === 'pure';
+                const isAzure = values.storageType === 'cloud' && values.cloudProvider === 'azure';
+                const isGCP = values.storageType === 'cloud' && values.cloudProvider === 'gcp';
+                
+                // env (for cloud providers that need credentials)
+                if (isAWS || isVsphere) {
                     yaml += '\n  env:';
-                    if (values.vsphereVcenter) {
-                        yaml += `\n  - name: VSPHERE_VCENTER\n    value: "${values.vsphereVcenter}"`;
+                    
+                    // AWS environment variables
+                    if (isAWS) {
+                        yaml += `\n  - name: AWS_ACCESS_KEY_ID\n    valueFrom:\n      secretKeyRef:\n        name: px-aws\n        key: AWS_ACCESS_KEY_ID`;
+                        yaml += `\n  - name: AWS_SECRET_ACCESS_KEY\n    valueFrom:\n      secretKeyRef:\n        name: px-aws\n        key: AWS_SECRET_ACCESS_KEY`;
                     }
-                    if (values.vsphereVcenterPort) {
-                        yaml += `\n  - name: VSPHERE_VCENTER_PORT\n    value: "${values.vsphereVcenterPort}"`;
+                    
+                    // vSphere environment variables
+                    if (isVsphere) {
+                        if (values.vsphereVcenter) {
+                            yaml += `\n  - name: VSPHERE_VCENTER\n    value: "${values.vsphereVcenter}"`;
+                        }
+                        if (values.vsphereVcenterPort) {
+                            yaml += `\n  - name: VSPHERE_VCENTER_PORT\n    value: "${values.vsphereVcenterPort}"`;
+                        }
+                        if (values.vsphereDatastorePrefix) {
+                            yaml += `\n  - name: VSPHERE_DATASTORE_PREFIX\n    value: "${values.vsphereDatastorePrefix}"`;
+                        }
+                        yaml += `\n  - name: VSPHERE_INSECURE\n    value: "true"`;
+                        yaml += `\n  - name: VSPHERE_INSTALL_MODE\n    value: "shared"`;
+                        yaml += `\n  - name: VSPHERE_USER\n    valueFrom:\n      secretKeyRef:\n        name: px-vsphere-secret\n        key: VSPHERE_USER`;
+                        yaml += `\n  - name: VSPHERE_PASSWORD\n    valueFrom:\n      secretKeyRef:\n        name: px-vsphere-secret\n        key: VSPHERE_PASSWORD`;
                     }
-                    if (values.vsphereDatastorePrefix) {
-                        yaml += `\n  - name: VSPHERE_DATASTORE_PREFIX\n    value: "${values.vsphereDatastorePrefix}"`;
-                    }
-                    yaml += `\n  - name: VSPHERE_INSECURE\n    value: "true"`;
-                    yaml += `\n  - name: VSPHERE_INSTALL_MODE\n    value: "shared"`;
-                    yaml += `\n  - name: VSPHERE_USER\n    valueFrom:\n      secretKeyRef:\n        name: px-vsphere-secret\n        key: VSPHERE_USER`;
-                    yaml += `\n  - name: VSPHERE_PASSWORD\n    valueFrom:\n      secretKeyRef:\n        name: px-vsphere-secret\n        key: VSPHERE_PASSWORD`;
                 }
                 
                 // image
@@ -1617,20 +1634,23 @@ metadata:
                 const hasS3Cert = this.elements.s3CertCheckbox.checked && this.elements.s3CertContent.value.trim();
                 const s3CertContent = hasS3Cert ? this.elements.s3CertContent.value.trim() : '';
                 
-                // Check if vSphere is configured
-                const isVsphere = values.storageType === 'cloud' && values.cloudProvider === 'vsphere';
-                
-                // Check if Pure FlashArray is configured
-                const isPure = values.storageType === 'cloud' && values.cloudProvider === 'pure';
-                
-                // Check if Azure is configured
-                const isAzure = values.storageType === 'cloud' && values.cloudProvider === 'azure';
-                
-                // Check if GCP is configured
-                const isGCP = values.storageType === 'cloud' && values.cloudProvider === 'gcp';
-                
                 // Generate secrets YAML
                 let secretYaml = '';
+                
+                // AWS secret
+                if (isAWS) {
+                    secretYaml += `apiVersion: v1
+kind: Secret
+metadata:
+  name: px-aws
+  namespace: ${values.namespace}
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: "<access-key-id>"
+  AWS_SECRET_ACCESS_KEY: "<secret-access-key>"
+---
+`;
+                }
                 
                 // vSphere secret
                 if (isVsphere) {
