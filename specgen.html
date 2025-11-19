@@ -476,6 +476,11 @@
                         </div>
                     </div>
                     
+                    <div class="form-group" id="prometheusUrlGroup" style="display:none; margin-left: 30px;">
+                        <label for="prometheusUrl">Prometheus URL</label>
+                        <input type="text" id="prometheusUrl" placeholder="http://prometheus:9090">
+                    </div>
+                    
                     <div class="form-group">
                         <div class="checkbox-group">
                             <input type="checkbox" id="useAuthorization">
@@ -495,11 +500,6 @@
                             <input type="checkbox" id="useDefaultStorageClasses" checked>
                             <label for="useDefaultStorageClasses">Default StorageClasses</label>
                         </div>
-                    </div>
-                    
-                    <div class="form-group" id="prometheusUrlGroup" style="display:none; margin-left: 30px;">
-                        <label for="prometheusUrl">Prometheus URL</label>
-                        <input type="text" id="prometheusUrl" placeholder="http://prometheus:9090">
                     </div>
                     
                     <!-- Certificates Section -->
@@ -611,6 +611,7 @@
                 this.elements.useMonitoring.addEventListener('change', () => this.handleMonitoringChange());
                 this.elements.useCustomRegistry.addEventListener('change', () => this.handleCustomRegistryChange());
                 this.elements.prometheusType.addEventListener('change', () => this.handlePrometheusTypeChange());
+                this.elements.useAutopilot.addEventListener('change', () => this.handleAutopilotChange());
                 this.elements.useAuthorization.addEventListener('change', () => this.handleAuthorizationChange());
                 this.elements.s3CertCheckbox.addEventListener('change', () => this.handleS3CertChange());
                 this.elements.s3CertContent.addEventListener('input', () => this.generateYAML());
@@ -812,16 +813,17 @@
                 this.generateYAML();
             },
             
+            handleAutopilotChange() {
+                this.updatePrometheusUrlVisibility();
+                this.generateYAML();
+            },
+            
             handleMonitoringChange() {
                 const isEnabled = this.elements.useMonitoring.checked;
                 this.elements.prometheusType.disabled = !isEnabled;
                 this.elements.prometheusTypeGroup.style.display = isEnabled ? 'flex' : 'none';
                 
-                if (!isEnabled) {
-                    this.elements.prometheusUrlGroup.style.display = 'none';
-                } else {
-                    this.handlePrometheusTypeChange();
-                }
+                this.updatePrometheusUrlVisibility();
                 
                 this.generateYAML();
             },
@@ -834,10 +836,15 @@
             },
             
             handlePrometheusTypeChange() {
+                this.updatePrometheusUrlVisibility();
+                this.generateYAML();
+            },
+            
+            updatePrometheusUrlVisibility() {
                 const isUserManaged = this.elements.prometheusType.value === 'user';
                 const isMonitoringEnabled = this.elements.useMonitoring.checked;
-                this.elements.prometheusUrlGroup.style.display = (isUserManaged && isMonitoringEnabled) ? 'flex' : 'none';
-                this.generateYAML();
+                const isAutopilotEnabled = this.elements.useAutopilot.checked;
+                this.elements.prometheusUrlGroup.style.display = (isUserManaged && isMonitoringEnabled && isAutopilotEnabled) ? 'flex' : 'none';
             },
             
             getCloudDiskTypeOptions(provider) {
@@ -879,32 +886,36 @@
                 
                 if (isFirstDrive) {
                     driveDiv.innerHTML = `
-                        <div style="display: flex; gap: 15px; align-items: flex-end;">
-                            <div class="form-group type-container" style="flex: 1; margin-bottom: 0; ${provider === 'pure' ? 'display: none;' : ''}">
-                                <label>Disk Type</label>
-                                <select class="cloudDriveType" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                    ${this.getCloudDiskTypeOptions(provider)}
-                                </select>
+                        <div style="display: flex; gap: 15px; align-items: flex-start;">
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div class="form-group type-container" style="margin-bottom: 0; ${provider === 'pure' ? 'display: none;' : ''}">
+                                    <label style="min-width: 200px;">Disk Type</label>
+                                    <select class="cloudDriveType" style="width: 10ch; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                        ${this.getCloudDiskTypeOptions(provider)}
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0; ${provider === 'pure' ? 'margin-left: 0;' : ''}">
+                                    <label style="min-width: 200px;">Size (GB)</label>
+                                    <input type="number" class="cloudDriveSize" value="150" min="1" style="width: 10ch; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                </div>
                             </div>
-                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                                <label>Size (GB)</label>
-                                <input type="number" class="cloudDriveSize" value="150" min="1" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                            </div>
-                            <button type="button" onclick="app.removeCloudDrive(${driveId})" class="btn-remove">Remove</button>
+                            <button type="button" onclick="app.removeCloudDrive(${driveId})" class="btn-remove" style="align-self: flex-start;">Remove</button>
                         </div>
                     `;
                 } else {
                     driveDiv.innerHTML = `
-                        <div style="display: flex; gap: 15px; align-items: center;">
-                            <div class="type-container" style="flex: 1; ${provider === 'pure' ? 'display: none;' : ''}">
-                                <select class="cloudDriveType" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                    ${this.getCloudDiskTypeOptions(provider)}
-                                </select>
+                        <div style="display: flex; gap: 15px; align-items: flex-start; margin-left: 215px;">
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div class="type-container" style="${provider === 'pure' ? 'display: none;' : ''}">
+                                    <select class="cloudDriveType" style="width: 10ch; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                        ${this.getCloudDiskTypeOptions(provider)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <input type="number" class="cloudDriveSize" value="150" min="1" style="width: 10ch; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                </div>
                             </div>
-                            <div style="flex: 1;">
-                                <input type="number" class="cloudDriveSize" value="150" min="1" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                            </div>
-                            <button type="button" onclick="app.removeCloudDrive(${driveId})" class="btn-remove">Remove</button>
+                            <button type="button" onclick="app.removeCloudDrive(${driveId})" class="btn-remove" style="align-self: flex-start;">Remove</button>
                         </div>
                     `;
                 }
@@ -1126,32 +1137,36 @@
                 
                 if (isFirstDrive) {
                     driveDiv.innerHTML = `
-                        <div style="display: flex; gap: 15px; align-items: flex-end;">
-                            <div class="type-container" style="flex: 1; ${isPure ? 'display: none;' : ''}">
-                                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748; font-size: 14px;">Disk Type</label>
-                                <select class="nodeCloudDriveType" onchange="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                    ${this.getCloudDiskTypeOptions(provider)}
-                                </select>
+                        <div style="display: flex; gap: 15px; align-items: flex-start;">
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div class="form-group type-container" style="margin-bottom: 0; ${isPure ? 'display: none;' : ''}">
+                                    <label style="min-width: 200px;">Disk Type</label>
+                                    <select class="nodeCloudDriveType" onchange="app.generateYAML()" style="width: 10ch; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                        ${this.getCloudDiskTypeOptions(provider)}
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0; ${isPure ? 'margin-left: 0;' : ''}">
+                                    <label style="min-width: 200px;">Size (GB)</label>
+                                    <input type="number" class="nodeCloudDriveSize" value="150" min="1" oninput="app.generateYAML()" style="width: 10ch; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                </div>
                             </div>
-                            <div style="flex: 1;">
-                                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #2d3748; font-size: 14px;">Size (GB)</label>
-                                <input type="number" class="nodeCloudDriveSize" value="150" min="1" oninput="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                            </div>
-                            <button type="button" onclick="app.removeNodeCloudDrive(${configId}, ${driveId})" class="btn-remove">Remove</button>
+                            <button type="button" onclick="app.removeNodeCloudDrive(${configId}, ${driveId})" class="btn-remove" style="align-self: flex-start;">Remove</button>
                         </div>
                     `;
                 } else {
                     driveDiv.innerHTML = `
-                        <div style="display: flex; gap: 15px; align-items: center;">
-                            <div class="type-container" style="flex: 1; ${isPure ? 'display: none;' : ''}">
-                                <select class="nodeCloudDriveType" onchange="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                    ${this.getCloudDiskTypeOptions(provider)}
-                                </select>
+                        <div style="display: flex; gap: 15px; align-items: flex-start; margin-left: 215px;">
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <div class="type-container" style="${isPure ? 'display: none;' : ''}">
+                                    <select class="nodeCloudDriveType" onchange="app.generateYAML()" style="width: 10ch; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                        ${this.getCloudDiskTypeOptions(provider)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <input type="number" class="nodeCloudDriveSize" value="150" min="1" oninput="app.generateYAML()" style="width: 10ch; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                </div>
                             </div>
-                            <div style="flex: 1;">
-                                <input type="number" class="nodeCloudDriveSize" value="150" min="1" oninput="app.generateYAML()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                            </div>
-                            <button type="button" onclick="app.removeNodeCloudDrive(${configId}, ${driveId})" class="btn-remove">Remove</button>
+                            <button type="button" onclick="app.removeNodeCloudDrive(${configId}, ${driveId})" class="btn-remove" style="align-self: flex-start;">Remove</button>
                         </div>
                     `;
                 }
